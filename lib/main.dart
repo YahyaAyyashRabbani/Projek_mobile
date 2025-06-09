@@ -1,15 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:projek_prak_mobile/login.dart';
+import 'package:projek_prak_mobile/model/notifikasi.dart';
 import 'package:projek_prak_mobile/root_page.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'notification_service.dart';
-
+import 'package:hive_flutter/hive_flutter.dart';
+import 'package:projek_prak_mobile/model/user.dart';
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await NotificationService().init();
+  await Hive.initFlutter();
+  Hive.registerAdapter(UserAdapter()); // Register the User adapter
+  Hive.registerAdapter(NotifikasiAdapter());
+  await Hive.openBox('userBox'); // Open userBox to store user data
 
   // Inisialisasi timezone
   tz.initializeTimeZones();
@@ -22,7 +28,7 @@ void main() async {
     const InitializationSettings(android: androidSettings, iOS: iosSettings),
   );
 
-  // Request permission iOS
+  // Request permission for iOS
   await flutterLocalNotificationsPlugin
       .resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>()
       ?.requestPermissions(
@@ -45,7 +51,8 @@ class MyApp extends StatelessWidget {
       initialRoute: '/login',
       routes: {
         '/login': (context) => const LoginPage(),
-        '/root': (context) => RootPage(username: ''),
+        // Ensure that RootPage receives the username parameter
+        '/root': (context) => const RootPage(username: ''),
       },
     );
   }

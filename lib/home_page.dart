@@ -4,7 +4,6 @@ import 'package:geocoding/geocoding.dart';
 import 'package:projek_prak_mobile/api/api.dart';
 import 'package:projek_prak_mobile/model/jadwal.dart';
 import 'package:projek_prak_mobile/utils/id_kota.dart';
-
 import 'package:shared_preferences/shared_preferences.dart';
 import 'notification_service.dart';
 
@@ -33,6 +32,7 @@ class _HomePageState extends State<HomePage> {
     _deteksiLokasiDanFetch();
   }
 
+  // Function to search city in the mapping (Kota/Kab)
   String? _searchCityInMapping(String placeName, Map<String, String> mapping) {
     placeName = placeName.toUpperCase();
 
@@ -45,122 +45,140 @@ class _HomePageState extends State<HomePage> {
     return null;
   }
 
+  // Method to fetch location and schedule data
   Future<void> _deteksiLokasiDanFetch() async {
-    setState(() {
-      _isLoading = true;
-      _error = null;
-      _jadwal = null;
-      _detectedCity = null;
-      _cityId = null;
-    });
+  setState(() {
+    _isLoading = true;
+    _error = null;
+    _jadwal = null;
+    _detectedCity = null;
+    _cityId = null;
+  });
 
-    try {
-      LocationPermission permission = await Geolocator.checkPermission();
+  try {
+    LocationPermission permission = await Geolocator.checkPermission();
 
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
       if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-        if (permission == LocationPermission.denied) {
+        if (mounted) {
           setState(() {
             _error = 'Izin lokasi ditolak';
             _isLoading = false;
           });
-          return;
         }
+        return;
       }
-      if (permission == LocationPermission.deniedForever) {
+    }
+    if (permission == LocationPermission.deniedForever) {
+      if (mounted) {
         setState(() {
           _error = 'Izin lokasi ditolak permanen, buka pengaturan';
           _isLoading = false;
         });
-        return;
       }
+      return;
+    }
 
-      Position position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+    Position position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
 
-      List<Placemark> placemarks = await placemarkFromCoordinates(position.latitude, position.longitude);
+    List<Placemark> placemarks = await placemarkFromCoordinates(position.latitude, position.longitude);
 
-      if (placemarks.isEmpty) {
+    if (placemarks.isEmpty) {
+      if (mounted) {
         setState(() {
           _error = 'Gagal mendapatkan lokasi';
           _isLoading = false;
         });
-        return;
       }
+      return;
+    }
 
-      Placemark place = placemarks.first;
-      String placeRaw = place.subAdministrativeArea ?? '';
+    Placemark place = placemarks.first;
+    String placeRaw = place.subAdministrativeArea ?? '';
 
-      if (placeRaw.isEmpty) {
+    if (placeRaw.isEmpty) {
+      if (mounted) {
         setState(() {
           _error = 'Nama kota/kabupaten tidak ditemukan dari lokasi';
           _isLoading = false;
         });
-        return;
       }
+      return;
+    }
 
-      String cityNormalized = placeRaw
-          .toUpperCase()
-          .replaceAll(RegExp(r'\bKABUPATEN\b', caseSensitive: false), '')
-          .replaceAll(RegExp(r'\bKAB\.\b', caseSensitive: false), '')
-          .replaceAll(RegExp(r'\bKOTA\b', caseSensitive: false), '')
-          .trim();
+    String cityNormalized = placeRaw
+        .toUpperCase()
+        .replaceAll(RegExp(r'\bKABUPATEN\b', caseSensitive: false), '')
+        .replaceAll(RegExp(r'\bKAB\.\b', caseSensitive: false), '')
+        .replaceAll(RegExp(r'\bKOTA\b', caseSensitive: false), '')
+        .trim();
 
-      String? matchedCityKey;
+    String? matchedCityKey;
 
-      if (idKota.containsKey('KAB. $cityNormalized')) {
-        matchedCityKey = 'KAB. $cityNormalized';
-      } else if (idKota.containsKey('KOTA $cityNormalized')) {
-        matchedCityKey = 'KOTA $cityNormalized';
-      } else {
-        matchedCityKey = _searchCityInMapping(cityNormalized, idKota);
-      }
+    if (idKota.containsKey('KAB. $cityNormalized')) {
+      matchedCityKey = 'KAB. $cityNormalized';
+    } else if (idKota.containsKey('KOTA $cityNormalized')) {
+      matchedCityKey = 'KOTA $cityNormalized';
+    } else {
+      matchedCityKey = _searchCityInMapping(cityNormalized, idKota);
+    }
 
-      if (matchedCityKey == null) {
+    if (matchedCityKey == null) {
+      if (mounted) {
         setState(() {
           _error = 'Kota/kabupaten untuk "$placeRaw" tidak ditemukan dalam data';
           _isLoading = false;
         });
-        return;
       }
+      return;
+    }
 
-      String cityIdStr = idKota[matchedCityKey]!;
-      int cityId = int.parse(cityIdStr);
+    String cityIdStr = idKota[matchedCityKey]!;
+    int cityId = int.parse(cityIdStr);
 
-      DateTime now = DateTime.now();
-      String tahun = now.year.toString();
-      String bulan = now.month.toString().padLeft(2, '0');
-      String tanggal = now.day.toString().padLeft(2, '0');
+    DateTime now = DateTime.now();
+    String tahun = now.year.toString();
+    String bulan = now.month.toString().padLeft(2, '0');
+    String tanggal = now.day.toString().padLeft(2, '0');
 
-      final jadwal = await ApiService.fetchJadwal(
-        kota: cityId.toString(),
-        tahun: tahun,
-        bulan: bulan,
-        tanggal: tanggal,
-      );
+    final jadwal = await ApiService.fetchJadwal(
+      kota: cityId.toString(),
+      tahun: tahun,
+      bulan: bulan,
+      tanggal: tanggal,
+    );
 
+    if (mounted) {
       setState(() {
         _jadwal = jadwal;
         _detectedCity = matchedCityKey;
         _cityId = cityId;
         _isLoading = false;
       });
+    }
 
-      // Jadwalkan notifikasi setelah data jadwal siap
-      await _scheduleAllNotifications();
+    // Jadwalkan notifikasi setelah data jadwal siap
+    await _scheduleAllNotifications();
 
-    } catch (e) {
+  } catch (e) {
+    if (mounted) {
       setState(() {
         _error = 'Error: $e';
         _isLoading = false;
       });
     }
   }
+}
 
+
+  // Method to schedule all notifications
   Future<void> _scheduleAllNotifications() async {
     if (_jadwal == null) return;
 
     final prefs = await SharedPreferences.getInstance();
 
+    // Mapping prayer times
     Map<String, String> jadwalMap = {
       'Subuh': _jadwal!.jadwal.subuh,
       'Dzuhur': _jadwal!.jadwal.dzuhur,
@@ -169,10 +187,12 @@ class _HomePageState extends State<HomePage> {
       'Isya': _jadwal!.jadwal.isya,
     };
 
+    // Cancel all previous notifications
     await _notificationService.cancelAll();
 
     int notifId = 0;
 
+    // Loop through each prayer time and schedule notifications
     for (var sholat in jadwalMap.keys) {
       final notifTimesStr = prefs.getString('notif_$sholat');
       if (notifTimesStr == null || notifTimesStr.isEmpty) continue;
@@ -192,26 +212,30 @@ class _HomePageState extends State<HomePage> {
         DateTime scheduledTime =
             DateTime(now.year, now.month, now.day, hour, minute);
 
+        // Adjust the scheduled time based on the notification time option
         if (notifTime == '10 menit sebelum') {
           scheduledTime = scheduledTime.subtract(const Duration(minutes: 10));
         } else if (notifTime == '5 menit sebelum') {
           scheduledTime = scheduledTime.subtract(const Duration(minutes: 5));
         }
 
+        // If scheduled time is in the past, set it for the next day
         if (scheduledTime.isBefore(now)) {
           scheduledTime = scheduledTime.add(const Duration(days: 1));
         }
 
+        // Schedule the notification
         await _notificationService.scheduleNotification(
-  id: notifId++,
-  title: 'Waktu Sholat $sholat',
-  body: 'Waktunya $sholat sekarang',
-  scheduledDate: scheduledTime,
-);
+          id: notifId++,
+          title: 'Waktu Sholat $sholat',
+          body: 'Waktunya $sholat sekarang',
+          scheduledDate: scheduledTime,
+        );
       }
     }
   }
 
+  // Header widget
   Widget _buildHeader() {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
@@ -232,6 +256,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  // City info widget
   Widget _buildCityInfo() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -257,6 +282,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  // Display Jadwal (prayer times)
   Widget _buildJadwalView() {
     if (_jadwal == null) {
       if (_isLoading) {
@@ -317,7 +343,6 @@ class _HomePageState extends State<HomePage> {
           children: [
             _buildHeader(),
             _buildCityInfo(),
-            
             Expanded(child: _buildJadwalView()),
           ],
         ),

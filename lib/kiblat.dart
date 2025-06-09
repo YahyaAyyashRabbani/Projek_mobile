@@ -7,7 +7,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:vector_math/vector_math.dart' show radians;
 
 class KiblatPage extends StatefulWidget {
-  const KiblatPage({Key? key}) : super(key: key);
+  const KiblatPage({super.key});
 
   @override
   State<KiblatPage> createState() => _KiblatPageState();
@@ -104,14 +104,16 @@ class _KiblatPageState extends State<KiblatPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Arah Kiblat'),
-        backgroundColor: Colors.green.shade700,
+         automaticallyImplyLeading: false,
+        title: const Text('Arah Kiblat', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),),
+        backgroundColor: Colors.teal,
+        
       ),
       backgroundColor: Colors.green.shade50,
       body: Center(
         child: _position == null
             ? const Text('Mengambil lokasi...',
-                style: TextStyle(fontSize: 18, color: Colors.green))
+                style: TextStyle(fontSize: 18, color: Colors.teal))
             : Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -120,7 +122,7 @@ class _KiblatPageState extends State<KiblatPage> {
                     style: TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.bold,
-                        color: Colors.green),
+                        color: Colors.teal),
                   ),
                   const SizedBox(height: 20),
                   if (direction != null)
@@ -129,30 +131,30 @@ class _KiblatPageState extends State<KiblatPage> {
                       child: Icon(
                         Icons.navigation,
                         size: 120,
-                        color: Colors.green.shade900,
+                        color: Colors.teal,
                       ),
                     )
                   else
                     const Text(
                       'Mengambil data kompas...',
-                      style: TextStyle(color: Colors.green),
+                      style: TextStyle(color: Colors.teal),
                     ),
                   const SizedBox(height: 20),
                   Text(
                     'Latitude: ${_position!.latitude.toStringAsFixed(5)}\n'
                     'Longitude: ${_position!.longitude.toStringAsFixed(5)}',
                     textAlign: TextAlign.center,
-                    style: const TextStyle(color: Colors.green),
+                    style: const TextStyle(color: Colors.teal),
                   ),
                   const SizedBox(height: 20),
                   Text(
                     'Sudut Kiblat: ${_kiblatDirection?.toStringAsFixed(2)}°',
-                    style: const TextStyle(color: Colors.green),
+                    style: const TextStyle(color: Colors.teal),
                   ),
                   const SizedBox(height: 10),
                   Text(
                     'Heading Kompas: ${_heading?.toStringAsFixed(2) ?? '-'}°',
-                    style: const TextStyle(color: Colors.green),
+                    style: const TextStyle(color: Colors.teal),
                   ),
                 ],
               ),
